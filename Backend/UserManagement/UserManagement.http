@@ -1,0 +1,6 @@
+@CRUDWithCSharp_HostAddress = http://localhost:5283
+
+GET {{CRUDWithCSharp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

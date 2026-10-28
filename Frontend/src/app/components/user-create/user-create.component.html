@@ -1,0 +1,128 @@
+<app-body-title></app-body-title>
+<div class="createUserLayout">
+  <form class="form" [formGroup]="userForm" (ngSubmit)="onSubmit()">
+    <div class="frameColumn">
+      <div class="column">
+        @for (item of rightColumn; track item) {
+          <div class="field">
+            <label>{{ item }}<span style="color: #f7745a"> *</span></label>
+            <div class="iconBox">
+              <ng-container>
+                @switch (item) {
+                  @case ('firstName') {
+                    <svg lucideUserRound></svg>
+                  }
+                  @case ('nationalId') {
+                    <svg lucideContactRound></svg>
+                  }
+                  @case ('job') {
+                    <svg lucideBriefcaseBusiness></svg>
+                  }
+                }
+              </ng-container>
+              <input
+                class="formBox"
+                placeholder="Enter your {{ item }}"
+                type="text"
+                [formControlName]="item"
+              />
+            </div>
+            @if (userForm.controls[item].invalid && userForm.controls[item].touched) {
+              @if (item === 'nationalId' && userForm.controls[item].hasError('pattern')) {
+                <small>The national ID must be exactly 10 digits.</small>
+              } @else if (
+                (item === 'firstName' && userForm.controls[item].hasError('maxlength')) ||
+                (item === 'job' && userForm.controls[item].hasError('maxlength'))
+              ) {
+                <small>Exceeds the permitted length</small>
+              } @else {
+                <small>Entering {{ item }} is required</small>
+              }
+            }
+          </div>
+        }
+      </div>
+      <div class="column">
+        @for (item of leftColumn; track item) {
+          <div class="field">
+            <label>{{ item }}<span style="color: #f7745a"> *</span></label>
+            <div class="iconBox">
+              <ng-container>
+                @switch (item) {
+                  @case ('lastName') {
+                    <svg lucideUsersRound></svg>
+                  }
+                  @case ('dateOfBirth') {
+                    <svg lucideCalendarDays></svg>
+                  }
+                }
+              </ng-container>
+              <input
+                class="formBox"
+                placeholder="Enter your {{ item }}"
+                [type]="item === 'dateOfBirth' ? 'date' : 'text'"
+                [formControlName]="item"
+                [max]="item === 'dateOfBirth' ? maxDate : null"
+              />
+            </div>
+            @if (userForm.controls[item].invalid && userForm.controls[item].touched) {
+              @if (
+                (item === 'lastName' && userForm.controls[item].hasError('maxlength')) ||
+                (item === 'education' && userForm.controls[item].hasError('maxlength'))
+              ) {
+                <small>Exceeds the permitted length</small>
+              } @else if (userForm.controls[item].hasError('required')) {
+                <small>Entering {{ item }} is required</small>
+              }
+            }
+          </div>
+        }
+        <label for="education" style="color: #6b4f3d"
+          >education<span style="color: #f7745a"> *</span></label
+        ><br />
+        <select id="education" formControlName="education" class="formBox select">
+          @for (option of dropDownItems; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+        @if (
+          userForm.controls['education'].touched &&
+          userForm.controls['education'].hasError('required')
+        ) {
+          <br />
+          <small>Entering educational information is required.</small>
+        }
+      </div>
+    </div>
+    <div class="userEmail iconBox">
+      <label>email<span style="color: #f7745a"> *</span></label>
+      <svg lucideMail style="margin-top: 37px"></svg>
+      <input
+        class="formBox"
+        style="width: 100%"
+        placeholder="Enter your email"
+        type="email"
+        formControlName="email"
+      />
+      @if (userForm.controls['email'].invalid && userForm.controls['email'].touched) {
+        @if (userForm.controls['email'].hasError('email')) {
+          <small>The entered email is not valid.</small>
+        } @else {
+          <small>Entering an email address is required.</small>
+        }
+      }
+    </div>
+    <div class="notification iconBox">
+      <svg lucideInfo style="margin-top: -2px"></svg>
+      <span>Fields marked with an asterisk (*) are mandatory.</span>
+      <input
+        class="formBox"
+        type="submit"
+        value="send"
+        [disabled]="isActive() === false || userForm.invalid"
+        [style.background-color]="isActive() == false || userForm.invalid ? '#fffafc' : '#fbdfcd'"
+      />
+    </div>
+  </form>
+  <app-poster></app-poster>
+</div>

@@ -1,0 +1,11 @@
+.poster {
+  height: 52vh;
+  margin-top: -20%;
+  border-radius: 10px;
+  background-color: #f3e5d6;
+  background-image: url('./userPoster.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}

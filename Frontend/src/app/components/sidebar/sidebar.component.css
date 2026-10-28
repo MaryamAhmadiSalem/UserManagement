@@ -1,0 +1,23 @@
+.menu {
+  text-align: center;
+  color: #fcf8f2;
+}
+.menuItems {
+  display: inline-block;
+  line-height: 55px;
+  font-size: 15px;
+  transition: transform 0.5s;
+  color: #fcf8f2;
+}
+.menuItems:hover {
+  cursor: pointer;
+  transform: scale(1.2);
+}
+.menu svg {
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+}
+.active {
+  color: rgb(251, 251, 183);
+}

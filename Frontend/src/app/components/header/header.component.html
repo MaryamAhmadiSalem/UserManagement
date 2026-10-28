@@ -1,0 +1,13 @@
+<header class="header">
+  <span class="title">User List</span>
+  <div class="searchBox">
+    <input
+      appHighlight
+      type="search"
+      placeholder="Searching for users by national ID.."
+      #nationalId
+      (input)="onSearchInput(nationalId.value)"
+    />
+    <svg lucideSearch (click)="searchUsers(nationalId.value)"></svg>
+  </div>
+</header>
