@@ -1,0 +1,16 @@
+input {
+  width: 100px;
+  height: 5.5vh;
+  border-radius: 10px;
+  border: none;
+  background-color: #f3e5d6;
+  color: #6b4f3d;
+  font-size: 14px;
+  margin-right: 15px;
+}
+input:focus {
+  outline: none;
+}
+input:hover {
+  cursor: pointer;
+}

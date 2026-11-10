@@ -1,0 +1,82 @@
+<div class="container">
+  <div class="card" [class.is-flipped]="isFlipped">
+    <div class="card-contents">
+      <div class="card-front">
+        <span class="title">Register</span>
+        <form [formGroup]="registerForm" (ngSubmit)="onRegister()">
+          @for (item of registrationLabels; track item.label) {
+            <input [type]="item.type" [placeholder]="item.label" [formControlName]="item.label" />
+            @if (
+              (registerForm.controls[item.label].invalid &&
+                registerForm.controls[item.label].touched) ||
+              (item.label === 'confirmPassword' && registerForm.hasError('passwordMismatch'))
+            ) {
+              @if (item.label === 'confirmPassword' && registerForm.hasError('passwordMismatch')) {
+                <br /><small>The password and the password confirmation do not match.</small>
+              } @else if (
+                item.label === 'password' && registerForm.controls[item.label].hasError('pattern')
+              ) {
+                <br /><small
+                  >The password must be exactly 10 characters long and include numbers, uppercase
+                  and lowercase letters, and symbols.</small
+                >
+              } @else if (
+                item.label === 'email' && registerForm.controls[item.label].hasError('email')
+              ) {
+                <br /><small>The email format is not valid.</small>
+              } @else {
+                <br /><small>Entering the {{ item.label }} is required</small>
+              }
+            }
+          }
+          <input
+            class="sendButton"
+            type="submit"
+            value="create account"
+            [disabled]="registerForm.invalid"
+            [style.background-color]="registerForm.invalid ? '#f3f3f3' : '#f4e2d7'"
+          />
+        </form>
+        <span
+          >Do you have an Account?
+          <span class="span" (click)="isFlipped = !isFlipped">Login</span>
+        </span>
+      </div>
+      <div class="card-back">
+        <span class="title">Login</span>
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+          @for (item of loginLabels; track item.label) {
+            <input [type]="item.type" [placeholder]="item.label" [formControlName]="item.label" />
+            @if (loginForm.controls[item.label].invalid && loginForm.controls[item.label].touched) {
+              @if (
+                item.label === 'password' && loginForm.controls[item.label].hasError('pattern')
+              ) {
+                <br /><small
+                  >The password must be exactly 10 characters long and include numbers, uppercase
+                  and lowercase letters, and symbols.</small
+                >
+              } @else if (
+                item.label === 'email' && loginForm.controls[item.label].hasError('email')
+              ) {
+                <br /><small>The email format is not valid.</small>
+              } @else {
+                <br /><small>Entering the {{ item.label }} is required</small>
+              }
+            }
+          }
+          <input
+            class="sendButton"
+            type="submit"
+            value="login"
+            [disabled]="loginForm.invalid"
+            [style.background-color]="loginForm.invalid ? '#f3f3f3' : '#f4e2d7'"
+          />
+        </form>
+        <span
+          >Create an Account.
+          <span class="span" (click)="isFlipped = !isFlipped">Register</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>

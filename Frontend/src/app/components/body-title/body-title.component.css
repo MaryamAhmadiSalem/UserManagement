@@ -12,6 +12,7 @@
   color: #593a28;
 }
 .title {
+  width: 83%;
   display: flex;
   flex-direction: row;
   align-items: center;

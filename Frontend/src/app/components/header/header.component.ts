@@ -1,9 +1,10 @@
 import { Component, output } from '@angular/core';
 import { LucideSearch } from '@lucide/angular';
 import { Highlight } from '../../directive/highlight.directive';
+import { Logout } from '../logout/logout.component';
 
 @Component({
-  imports: [LucideSearch, Highlight],
+  imports: [LucideSearch, Highlight, Logout],
   selector: 'app-header',
   styleUrl: './header.component.css',
   templateUrl: './header.component.html',

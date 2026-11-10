@@ -16,6 +16,7 @@ import { ActivatedRoute } from '@angular/router';
 import { BodyTitle } from '../body-title/body-title.component';
 import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Notification } from '../../services/notification';
 
 @Component({
   imports: [
@@ -58,6 +59,7 @@ export class UserCreate {
   isActive = signal<boolean>(true);
   private userService = inject(UserService);
   private activatedRoute = inject(ActivatedRoute);
+  private notificationService = inject(Notification);
 
   ngOnInit() {
     this.handleGetUserById();
@@ -70,7 +72,7 @@ export class UserCreate {
   }
   public onSubmit(): void {
     if (this.userForm.invalid) {
-      alert('This information is not reliable.');
+      this.notificationService.showNotification('This information is not reliable.');
       return;
     }
     if (this.id === null) this.handleCreateUser();
@@ -84,6 +86,12 @@ export class UserCreate {
       this.id = userId;
       this.userService.getUserById(userId).subscribe({
         next: (respons) => this.userForm.patchValue(respons),
+        error: (err) => {
+          if (err.status === 403)
+            this.notificationService.showNotification(
+              'You cannot view information that does not belong to you.',
+            );
+        },
       });
     }
   }
@@ -93,7 +101,10 @@ export class UserCreate {
       .postUsers(this.userForm.value)
       .pipe(finalize(() => this.isActive.set(true)))
       .subscribe({
-        next: () => alert('Your information has been successfully registered.'),
+        next: () =>
+          this.notificationService.showNotification(
+            'Your information has been successfully registered.',
+          ),
         error: (error) => this.handleErrorResult(error),
       });
   }
@@ -104,14 +115,21 @@ export class UserCreate {
       .putUsers(this.id, this.userForm.value)
       .pipe(finalize(() => this.isActive.set(true)))
       .subscribe({
-        next: () => alert('Your information has been successfully edited.'),
+        next: () =>
+          this.notificationService.showNotification(
+            'Your information has been successfully edited.',
+          ),
         error: (error) => this.handleErrorResult(error),
       });
   }
   private handleErrorResult(err: HttpErrorResponse) {
     if (err.error.includes('NationalIdAndEmail'))
-      alert('The NationalID and Email cannot be duplicates.');
-    else if (err.error.includes('Email')) alert('The email cannot be duplicates.');
-    else if (err.error.includes('NationalId')) alert('The NationalID cannot be duplicates.');
+      this.notificationService.showNotification('The NationalID and Email cannot be duplicates.');
+    else if (err.error.includes('Email'))
+      this.notificationService.showNotification('The email cannot be duplicates.');
+    else if (err.error.includes('NationalId'))
+      this.notificationService.showNotification('The NationalID cannot be duplicates.');
+    else if (err.error.includes('ExsistAccount'))
+      this.notificationService.showNotification('A user account cannot have two owners.');
   }
 }

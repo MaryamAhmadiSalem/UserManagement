@@ -1,0 +1,94 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #f7f0e7;
+  color: #6f4d37;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+.card {
+  position: relative;
+  display: flex;
+  text-align: center;
+  width: 30%;
+  height: 70vh;
+  border-radius: 10%;
+  background-color: transparent;
+  perspective: 1000px;
+}
+.card-contents {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  transition: transform 1s;
+  transform-style: preserve-3d;
+  box-shadow: -3px 4px 8px 0 rgba(132, 131, 131, 0.4);
+  border-radius: 10%;
+  background-color: rgb(252, 248, 242);
+}
+.card.is-flipped .card-contents {
+  transform: rotateY(180deg);
+}
+.card-front,
+.card-back {
+  position: absolute;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  flex-direction: column;
+  padding-top: 20%;
+  gap: 40px;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 10%;
+}
+input {
+  width: 85%;
+  height: 5vh;
+  border-radius: 10px;
+  margin-bottom: 2.5%;
+  margin-top: 2.5%;
+  border: none;
+  background-color: white;
+  border: 0.5px solid #edd2c1;
+}
+input:focus {
+  outline: none;
+}
+input::placeholder {
+  font-size: 14px;
+  color: #bea18e;
+}
+.card-back {
+  transform: rotateY(180deg);
+}
+.title {
+  font-size: 25px;
+}
+span {
+  font-size: 15px;
+}
+small {
+  font-size: 13px;
+}
+.span {
+  color: #f7745a;
+}
+.span:hover,
+.sendButton:hover {
+  cursor: pointer;
+}
+.sendButton {
+  background-color: #f4e2d7;
+  color: #6f4d37;
+  font-size: 14px;
+  border: none;
+}

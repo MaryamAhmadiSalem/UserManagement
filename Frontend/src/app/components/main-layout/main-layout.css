@@ -1,0 +1,36 @@
+.container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  background-color: #f7f0e7;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+.rightItem {
+  display: flex;
+  flex-direction: column;
+  width: 82%;
+}
+.leftItem {
+  width: 18%;
+  background-color: #6f4d37;
+}
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+}
+.body {
+  direction: rtl;
+  margin: 0;
+  width: 90%;
+  height: 90vh;
+  background-color: #fcf8f2;
+  border-radius: 10px;
+  box-shadow: 4px 4px 4px 4px #eaded6;
+}
+app-user-create {
+  display: block;
+  width: 100%;
+}
