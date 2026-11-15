@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using UserManagement.Application.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
 
 namespace UserManagement.Infrastructure.Services
 {
@@ -22,13 +23,14 @@ namespace UserManagement.Infrastructure.Services
             _issuer = _configuration["Jwt:Issuer"]!;
             _audience = _configuration["Jwt:Audience"]!;
         }
-        public string GenerateToken(string userId)
+        public string GenerateToken(string userId, IEnumerable<Claim> claims)
         {
             var claim = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, userId),
                 new Claim(JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString())
             };
+            claim.AddRange(claims);
             var generateToken = new JwtSecurityToken(
                issuer: _issuer,
                audience: _audience,
@@ -38,6 +40,21 @@ namespace UserManagement.Infrastructure.Services
             );
             var tokenHandeler = new JwtSecurityTokenHandler();
             return tokenHandeler.WriteToken(generateToken);
+        }
+        public string GenerateRefreshToken()
+        {
+            var randomBytes = new byte[64];
+            var randomNumber = RandomNumberGenerator.Create();
+            randomNumber.GetBytes(randomBytes);
+
+            return Convert.ToBase64String(randomBytes);
+        }
+        public string HashRefreshToken(string token)
+        {
+            var hash = SHA256.HashData(
+                Encoding.UTF8.GetBytes(token)
+            );
+            return Convert.ToBase64String(hash);
         }
     }
 }

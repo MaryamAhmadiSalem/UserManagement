@@ -10,6 +10,9 @@ namespace UserManagement.Configuration.Extensions
             services.Configure<DatabaseSetting>(
               configuration.GetSection("ConnectionStrings")
             );
+            services.Configure<InitialManagerSetting>(
+               configuration.GetSection("InitialManager")
+            );
             return services;
 
         }

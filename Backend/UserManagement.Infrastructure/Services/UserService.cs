@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Security.Claims;
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using UserManagement.Application.DTO;
 using UserManagement.Application.Interfaces;
@@ -17,11 +18,12 @@ namespace UserManagement.Infrastructure.Services
         private readonly RegisterValidator _validationsRegister;
         private readonly LoginValidator _validationsLogin;
         private readonly ITokenService _tokenService;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
         public UserService(UserManager<IdentityUser> userManager,
             IUserRepository userRepository, IMapper mapper,
             UserModelValidator validationsUserModel, RegisterValidator validationsRegister,
-            LoginValidator validationsLogin, ITokenService tokenService
+            LoginValidator validationsLogin, ITokenService tokenService, RoleManager<IdentityRole> roleManager
             )
         {
             _userManager = userManager;
@@ -31,6 +33,7 @@ namespace UserManagement.Infrastructure.Services
             _validationsRegister = validationsRegister;
             _validationsLogin = validationsLogin;
             _tokenService = tokenService;
+            _roleManager = roleManager;
         }
         public async Task<ResultOfT<UserInformation>> CreateUser(CreateUserDto dto, string userId)
         {
@@ -54,92 +57,250 @@ namespace UserManagement.Infrastructure.Services
             }
             return UnsuccessfulResult<UserInformation>(["ExsistAccount"]);
         }
-        public async Task<ResultOfT<List<UserInformation>>> ReadAllUser()
+        public async Task<ResultOfT<List<UserListDto>>> ReadAllUser(string userId)
         {
-            var userInfo = await _userRepository.GetAll();
-            return SuccessfulResult<List<UserInformation>>(userInfo);
+            var usersInfo = await _userRepository.GetAll();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return UnsuccessfulResult<List<UserListDto>>(["NotFound"]);
+            var roles = await _userManager.GetRolesAsync(user!);
+
+            if (!roles.Contains("Admin") && !roles.Contains("Manager"))
+                return UnsuccessfulResult<List<UserListDto>>(["Fail"]); 
+            var result = new List<UserListDto>();
+            foreach (var userInfo in usersInfo)
+            {
+                var identityUser = await _userManager.FindByIdAsync(userInfo.UserId);
+                if (identityUser == null)
+                    continue;
+                var userRoles = await _userManager.GetRolesAsync(identityUser);
+                if (roles.Contains("Admin") && !userRoles.Contains("User"))
+                    continue;
+                var userDto = _mapper.Map<UserListDto>(userInfo);
+                userDto.Role = userRoles.FirstOrDefault() ?? "Unknown";
+                result.Add(userDto);
+            }
+            return SuccessfulResult<List<UserListDto>>(result);
         }
         public async Task<ResultOfT<UserInformation>> ReadOneUser(int id, string userId)
         {
-            var user = await _userRepository.GetById(id);
-            if (user == null) return UnsuccessfulResult<UserInformation>(["NotFound"]);
-            if (user.UserId != userId) return UnsuccessfulResult<UserInformation>(["Forbidden"]);
-            return SuccessfulResult(user);
+            var targetUser = await _userRepository.GetById(id);
+            if (targetUser == null) return UnsuccessfulResult<UserInformation>(["NotFound"]);
+
+            var permission = await CanManageUser(targetUser, userId);
+            if (!permission.IsSuccess)
+                return UnsuccessfulResult<UserInformation>(permission.Error!);
+
+            return SuccessfulResult(targetUser);
         }
         public async Task<Result> UpdateUser(CreateUserDto dto, int id, string userId)
         {
-            var user = await _userRepository.GetById(id);
-            if (user == null) return Unsuccessful(["NotFound"]);
-
-            if (userId != user.UserId)
-                return Unsuccessful(["Forbidden"]);
             var validationResult = await _validationsUserModel.ValidateAsync(dto);
             if (!validationResult.IsValid)
                 return Unsuccessful(
-                    validationResult.Errors.Select(e => e.ErrorMessage).ToList()
+                      validationResult.Errors.Select(e => e.ErrorMessage).ToList()
                 );
             var duplicateResult = await this.CheckingDuplicates(dto.NationalId, dto.Email, id);
             if (!duplicateResult.IsSuccess)
                 return Unsuccessful(duplicateResult.Error!);
 
-            _mapper.Map(dto, user);
-            await _userRepository.Update(user);
+            var targetUser = await _userRepository.GetById(id);
+            if (targetUser == null) return Unsuccessful(["NotFound"]);
 
+            var permission = await CanManageUser(targetUser, userId);
+            if (!permission.IsSuccess)
+                return Unsuccessful(permission.Error!);
+            _mapper.Map(dto, targetUser);
+            await _userRepository.Update(targetUser);
             return Successful();
         }
         public async Task<Result> DeleteUser(int id, string userId)
         {
-            var user = await _userRepository.GetById(id);
-            if (user == null)
+            var targetUser = await _userRepository.GetById(id);
+            if (targetUser == null)
                 return Unsuccessful(["NotFound"]);
-            if (user.UserId != userId)
-                return Unsuccessful(["Forbidden"]);
-            var identityUser = await _userManager.FindByIdAsync(user.UserId);
+            var permission = await CanManageUser(targetUser, userId);
+            if (!permission.IsSuccess)
+                return Unsuccessful(permission.Error!);
+
+            var identityUser = await _userManager.FindByIdAsync(targetUser.UserId);
             if (identityUser == null)
                 return Unsuccessful(["AccountNotFound"]);
-            await _userRepository.Delete(user);
+
             var deletedAccount = await _userManager.DeleteAsync(identityUser);
             if (!deletedAccount.Succeeded)
                 return Unsuccessful(["AccountDeletionFailed"]);
+
+            //await _userRepository.Delete(targetUser);
             return Successful();
         }
-        public async Task<ResultOfT<UserInformation>> GetByNationalId(string nationalId, string userId)
+        public async Task<ResultOfT<UserListDto>> GetByNationalId(string nationalId, string userId)
         {
-            var user = await _userRepository.GetByNationalId(nationalId);
-            if (user == null)
-                return UnsuccessfulResult<UserInformation>(["NotFound"]);
-            if (user.UserId != userId)
-                return UnsuccessfulResult<UserInformation>(["Forbidden"]);
-            return SuccessfulResult(user);
+            var targetUser = await _userRepository.GetByNationalId(nationalId);
+            if (targetUser == null)
+                return UnsuccessfulResult<UserListDto>(["NotFound"]);
+
+            var permission = await CanManageUser(targetUser, userId);
+            if (!permission.IsSuccess)
+                return UnsuccessfulResult<UserListDto>(permission.Error!);
+
+            var identityUser = await _userManager.FindByIdAsync(targetUser.UserId);
+
+            if (identityUser == null)
+                return UnsuccessfulResult<UserListDto>(["AccountNotFound"]);
+
+            var roles = await _userManager.GetRolesAsync(identityUser);
+
+            var userDto = _mapper.Map<UserListDto>(targetUser);
+            userDto.Role = roles.FirstOrDefault() ?? "Unknown";
+
+            return SuccessfulResult(userDto);
         }
-        public async Task<ResultOfT<string>> Register(RegisterDto dto)
+        public async Task<ResultOfT<AuthTokenDto>> Register(RegisterDto dto)
         {
             var validationResult = await _validationsRegister.ValidateAsync(dto);
             if (validationResult.IsValid)
             {
                 var user = _mapper.Map<IdentityUser>(dto);
                 var createAccount = await _userManager.CreateAsync(user, dto.Password);
-                if (!createAccount.Succeeded) return UnsuccessfulResult<string>(["RegisterFailed"]);
-                var token = _tokenService.GenerateToken(user.Id);
-                return SuccessfulResult<string>(token);
+                if (!createAccount.Succeeded) return UnsuccessfulResult<AuthTokenDto>(["RegisterFailed"]);
+
+                var addRole = await _userManager.AddToRoleAsync(user, "User");
+                if (!addRole.Succeeded)
+                    return UnsuccessfulResult<AuthTokenDto>(["RoleAssignmentFailed"]);
+
+                var role = await _roleManager.FindByNameAsync("User");
+                var claims = await _roleManager.GetClaimsAsync(role!);
+                claims.Add(new Claim(ClaimTypes.Role, "User"));
+
+                var accessToken = _tokenService.GenerateToken(user.Id, claims);
+                return await RefreshToken(user.Id, accessToken);
             }
-            return UnsuccessfulResult<string>(
+            return UnsuccessfulResult<AuthTokenDto>(
                 validationResult.Errors.Select(e => e.ErrorMessage).ToList()
             );
         }
-        public async Task<ResultOfT<string>> Login(LoginDto dto)
+        public async Task<ResultOfT<AuthTokenDto>> Login(LoginDto dto)
         {
-            await this.ValidationLogin(dto);
+            var validationResult = await ValidationLogin(dto);
+            if (!validationResult.IsSuccess)
+                return UnsuccessfulResult<AuthTokenDto>(validationResult.Error!);
+
             var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null)
-                return UnsuccessfulResult<string>(["NotFound"]);
+                return UnsuccessfulResult<AuthTokenDto>(["NotFound"]);
             var checkPassword = await _userManager.CheckPasswordAsync(user, dto.Password);
             if (!checkPassword)
-                return UnsuccessfulResult<string>(["IncorrectPassword"]);
-            var token = _tokenService.GenerateToken(user.Id);
-            return SuccessfulResult<string>(token);
+                return UnsuccessfulResult<AuthTokenDto>(["IncorrectPassword"]);
+            var roleClaims = new List<Claim>();
+            var rolesUser = await _userManager.GetRolesAsync(user);
+            foreach (var roleName in rolesUser)
+            {
+                var role = await _roleManager.FindByNameAsync(roleName);
+                var claims = await _roleManager.GetClaimsAsync(role!);
+                roleClaims.Add(new Claim(ClaimTypes.Role, roleName));
+                roleClaims.AddRange(claims);
+            }
+            var accessToken = _tokenService.GenerateToken(user.Id, roleClaims);
+            return await RefreshToken(user.Id, accessToken);
+        }
+        public async Task<Result> AssignRole(AssignRoleDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(dto.UserId);
+            if (user == null) return Unsuccessful(["NotFound"]);
+            var existRole = await _roleManager.RoleExistsAsync(dto.RoleName);
+            if (!existRole) return Unsuccessful(["RoleNotFound"]);
+            var roles = await _userManager.GetRolesAsync(user);
+            if (dto.RoleName != "Admin" && dto.RoleName != "User")
+                return Unsuccessful(["InvalidRole"]);
+            if (roles.Contains("Manager")) return Unsuccessful(["CannotChangeManagerRole"]);
+            var removeRoles = await _userManager.RemoveFromRolesAsync(user, roles);
+            if (!removeRoles.Succeeded) return Unsuccessful(["RemovingFailed"]);
+            var addNewRole = await _userManager.AddToRoleAsync(user, dto.RoleName);
+            if (!addNewRole.Succeeded) return Unsuccessful(["AddingFailed"]);
+            return Successful();
+        }
+        public async Task<ResultOfT<AuthTokenDto>> TokenRenewal(RefreshTokenDto dto)
+        {
+            var token = _tokenService.HashRefreshToken(dto.Token);
+            var refreshToken = await _userRepository.ExistRefreshToken(token);
+            if (refreshToken == null) return UnsuccessfulResult<AuthTokenDto>(["Invalid"]);
+            else if (refreshToken.Revoked != null) return UnsuccessfulResult<AuthTokenDto>(["Revoked"]);
+            else if (refreshToken.Expires <= DateTimeOffset.UtcNow) return UnsuccessfulResult<AuthTokenDto>(["Expired"]);
+
+            var tokenOwner = await _userManager.FindByIdAsync(refreshToken.UserId);
+            if (tokenOwner == null) return UnsuccessfulResult<AuthTokenDto>(["NotFound"]);
+            var roles = await _userManager.GetRolesAsync(tokenOwner!);
+            var claims = new List<Claim>();
+            foreach (var role in roles)
+            {
+                var roleUser = await _roleManager.FindByNameAsync(role);
+                var calimsRole = await _roleManager.GetClaimsAsync(roleUser!);
+                claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.AddRange(calimsRole);
+            }
+            await _userRepository.RevokeRefreshToken(refreshToken.Token);
+            var newAccessToken = _tokenService.GenerateToken(refreshToken.UserId, claims);
+            return await RefreshToken(refreshToken.UserId, newAccessToken);
+        }
+        public async Task<bool> TokenRevocation(RefreshTokenDto dto)
+        {
+            var hashToken = _tokenService.HashRefreshToken(dto.Token);
+            var refreshToken = await _userRepository.ExistRefreshToken(hashToken);
+            if (refreshToken == null || refreshToken.Revoked != null || refreshToken.Expires <= DateTimeOffset.UtcNow) return false;
+            await _userRepository.RevokeRefreshToken(hashToken);
+            return true;
         }
 
+
+        private async Task<Result> CanManageUser(UserInformation targetUser, string userId)
+        {
+            var currentUser = await _userManager.FindByIdAsync(userId);
+            if (currentUser == null)
+                return Unsuccessful(["NotFound"]);
+
+            var currentRoles = await _userManager.GetRolesAsync(currentUser);
+
+            if (currentRoles.Contains("Manager"))
+                return Successful();
+            if (currentRoles.Contains("Admin"))
+            {
+                var targetAccount = await _userManager.FindByIdAsync(targetUser.UserId);
+                if (targetAccount == null)
+                    return Unsuccessful(["AccountNotFound"]);
+                var targetRoles = await _userManager.GetRolesAsync(targetAccount);
+                if (targetRoles.Contains("User"))
+                    return Successful();
+                return Unsuccessful(["Forbidden"]);
+            }
+            if (currentRoles.Contains("User"))
+            {
+                if (targetUser.UserId == userId)
+                    return Successful();
+                return Unsuccessful(["Forbidden"]);
+            }
+            return Unsuccessful(["Forbidden"]);
+        }
+        private async Task<ResultOfT<AuthTokenDto>> RefreshToken(string userId, string accessToken)
+        {
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            var hashRefreshToken = _tokenService.HashRefreshToken(refreshToken);
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                Token = hashRefreshToken,
+                UserId = userId,
+                Expires = DateTimeOffset.UtcNow.AddDays(7),
+                Revoked = null
+            };
+            await _userRepository.AddRefreshToken(refreshTokenEntity);
+
+            var tokenDto = new AuthTokenDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
+            };
+            return SuccessfulResult<AuthTokenDto>(tokenDto);
+        }
         private async Task<Result> CheckingDuplicates(string nationalId, string email, int? id)
         {
             var duplicateNationalId = await _userRepository.ExistsByNationalId(nationalId, id);

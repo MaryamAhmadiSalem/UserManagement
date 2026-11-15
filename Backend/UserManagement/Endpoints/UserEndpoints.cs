@@ -20,20 +20,21 @@ namespace UserManagement.Endpoints
                 return Results.BadRequest(user.Error);
             }).RequireAuthorization();
 
-            app.MapGet("/api/users", async (IUserService service) =>
+            app.MapGet("/api/users", async (IUserService service, HttpContext httpContext) =>
             {
-                var userInfo = await service.ReadAllUser();
+                var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userInfo = await service.ReadAllUser(userId!);
                 return Results.Ok(userInfo.Data);
-            }).RequireAuthorization();
+            }).RequireAuthorization("UserRead", "ReadAllUsers");
 
             app.MapGet("/api/users/{id}", async (IUserService service, int id, HttpContext httpContext) =>
             {
                 var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var user = await service.ReadOneUser(id, userId);
                 if (user.IsSuccess) return Results.Ok(user.Data);
-                if (user.Error!.Contains("Forbidden")) return Results.NotFound();
-                return Results.Forbid();
-            }).RequireAuthorization();
+                if (user.Error!.Contains("Forbidden")) return Results.Forbid();
+                return Results.NotFound();
+            }).RequireAuthorization("UserRead");
 
             app.MapPut("/api/users/{id}", async (IUserService service, CreateUserDto dto, int id, HttpContext httpContext) =>
             {
@@ -48,7 +49,7 @@ namespace UserManagement.Endpoints
                 if (user.Error!.Contains("Forbidden"))
                     return Results.Forbid();
                 return Results.BadRequest(user.Error);
-            }).RequireAuthorization();
+            }).RequireAuthorization("UserUpdate");
 
             app.MapDelete("/api/users/{id}", async (IUserService service, int id, HttpContext httpContext) =>
             {
@@ -58,7 +59,7 @@ namespace UserManagement.Endpoints
                 if (user.Error!.Contains("Forbidden"))
                     return Results.Forbid();
                 return Results.NotFound("User not found!");
-            }).RequireAuthorization();
+            }).RequireAuthorization("UserDelete");
 
             app.MapGet("/api/users/search/{nationalId}", async (IUserService service, string nationalId, HttpContext httpContext) =>
             {
@@ -67,7 +68,7 @@ namespace UserManagement.Endpoints
                 if (user.IsSuccess) return Results.Ok(user.Data);
                 if (user.Error!.Contains("Forbidden")) return Results.Forbid();
                 return Results.NotFound();
-            }).RequireAuthorization();
+            }).RequireAuthorization("UserRead");
 
             app.MapPost("/api/register/user", async (IUserService service, RegisterDto dto) =>
             {
@@ -76,6 +77,7 @@ namespace UserManagement.Endpoints
                 if (register.Error!.Contains("RegisterFailed")) return Results.Unauthorized();
                 return Results.BadRequest(register.Error);
             });
+
             app.MapPost("/api/login/user", async (IUserService service, LoginDto dto) =>
             {
                 var login = await service.Login(dto);
@@ -84,16 +86,42 @@ namespace UserManagement.Endpoints
                 if (login.Error!.Contains("IncorrectPassword")) return Results.Unauthorized();
                 return Results.BadRequest(login.Error);
             });
-            app.MapPost("/api/auth/logout", async (HttpContext httpContext, ITokenBlackListService tokenService) =>
+
+            app.MapPost("/api/auth/logout", async (HttpContext httpContext, ITokenBlackListService tokenService, RefreshTokenDto dto, IUserService service) =>
             {
                 var jti = httpContext.User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
                 var expString = httpContext.User.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
                 var exp = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expString!));
                 var isTokenAdd = await tokenService.AddTokenToDatabase(jti!, exp);
-                if(isTokenAdd)
+                if (isTokenAdd)
+                {
+                    await service.TokenRevocation(dto);
                     return Results.Ok();
+                }
                 return Results.NotFound();
             }).RequireAuthorization();
+
+            app.MapPost("/api/auth/refresh-expired", async (RefreshTokenDto dto, IUserService service) =>
+            {
+                var tokenRevoked = await service.TokenRevocation(dto);
+                if (tokenRevoked) return Results.Ok();
+                return Results.Unauthorized();
+            });
+
+            app.MapPost("/api/users/assign-role", async (AssignRoleDto dto, IUserService service) =>
+            {
+                var assignRoleUser = await service.AssignRole(dto);
+                if (assignRoleUser.IsSuccess) return Results.Ok();
+                return Results.BadRequest(assignRoleUser);
+            }).RequireAuthorization("RolesAssign");
+
+            app.MapPost("/api/token/renewal", async (RefreshTokenDto dto, IUserService service) =>
+            {
+                var renewalToken = await service.TokenRenewal(dto);
+                if (renewalToken.IsSuccess) return Results.Ok(renewalToken.Data);
+                if (renewalToken.Error!.Contains("NotFound")) return Results.NotFound();
+                else return Results.Unauthorized();
+            });
         }
     }
 }

@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Sidebar } from '../sidebar/sidebar.component';
+import { UserService } from '../../services/user.service';
 
 @Component({
   imports: [RouterOutlet, Sidebar],
@@ -8,4 +9,9 @@ import { Sidebar } from '../sidebar/sidebar.component';
   styleUrl: './main-layout.css',
   templateUrl: './main-layout.html',
 })
-export class MainLayout {}
+export class MainLayout {
+  private service = inject(UserService);
+  ngOnInit() {
+    this.service.checkTokenExpiration();
+  }
+}

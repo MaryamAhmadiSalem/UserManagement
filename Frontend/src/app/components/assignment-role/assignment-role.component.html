@@ -1,0 +1,28 @@
+<form [formGroup]="assigntRoleForm" (ngSubmit)="onSubmit()" class="form">
+  @for (label of labels; track label) {
+    <label style="color: #4d392c">{{ label }}</label>
+    <input
+      class="formBox"
+      placeholder="Enter your {{ label }}"
+      type="text"
+      [formControlName]="label"
+      [readonly]="true"
+    />
+    <br />
+  }
+  <label for="role">role<span style="color: #f7745a"> *</span></label>
+  <select id="role" formControlName="role" class="formBox">
+    @for (option of options; track option) {
+      <option [value]="option">{{ option }}</option>
+    }
+  </select>
+  @if (
+    assigntRoleForm.controls['role'].touched &&
+    assigntRoleForm.controls['role'].hasError('required')
+  ) {
+    <br />
+    <small>Adding a user role is required.</small>
+  }
+  <br />
+  <input type="submit" value="send" class="submit" />
+</form>

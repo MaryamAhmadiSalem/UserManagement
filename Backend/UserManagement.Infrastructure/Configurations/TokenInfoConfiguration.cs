@@ -4,7 +4,7 @@ using UserManagement.Domain;
 
 namespace UserManagement.Infrastructure.Configurations
 {
-    internal class TokenInfoConfiguration : IEntityTypeConfiguration<TokenInfoExpired>
+    public class TokenInfoConfiguration : IEntityTypeConfiguration<TokenInfoExpired>
     {
         public void Configure(EntityTypeBuilder<TokenInfoExpired> builder)
         {

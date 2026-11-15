@@ -1,5 +1,11 @@
 import { Component, inject } from '@angular/core';
-import { ReactiveFormsModule, FormControl, FormGroup, Validators, AbstractControl } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormControl,
+  FormGroup,
+  Validators,
+  AbstractControl,
+} from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService } from '../../services/user.service';
 import { Notification } from '../../services/notification';
@@ -36,7 +42,7 @@ export class Register {
       confirmPassword: new FormControl('', [Validators.required]),
     },
     {
-      validators: this.passwordMatchValidator.bind(this)
+      validators: this.passwordMatchValidator.bind(this),
     },
   );
   loginForm: FormGroup = new FormGroup({
@@ -78,7 +84,7 @@ export class Register {
       });
     }
   }
-  public passwordMatchValidator(registerForm : AbstractControl) {
+  public passwordMatchValidator(registerForm: AbstractControl) {
     var valueForm = registerForm.value;
     if (valueForm.password !== valueForm.confirmPassword) return { passwordMismatch: true };
     return null;

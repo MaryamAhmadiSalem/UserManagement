@@ -37,11 +37,11 @@ namespace UserManagement.Infrastructure.Repository
             await _db.SaveChangesAsync();
             return userInfo;
         }
-        public async Task Delete(UserInformation user)
-        {
-            _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-        }
+        //public async Task Delete(UserInformation user)
+        //{
+        //    _db.Users.Remove(user);
+        //    await _db.SaveChangesAsync();
+        //}
         public Task<bool> ExistsByNationalId(string nationalId, int? id)
         {
             return _db.Users.AnyAsync(u =>
@@ -57,6 +57,22 @@ namespace UserManagement.Infrastructure.Repository
         public Task<bool> ExistsByUserId(string userId)
         {
             return _db.Users.AnyAsync(u => u.UserId == userId);
+        }
+        public async Task AddRefreshToken(RefreshToken refreshToken)
+        {
+            await _db.RefreshTokens.AddAsync(refreshToken);
+            await _db.SaveChangesAsync();
+        }
+        public async Task<RefreshToken?> ExistRefreshToken(string tokenHash)
+        {
+            return await _db.RefreshTokens.SingleOrDefaultAsync(x=>x.Token == tokenHash);
+        }
+        public async Task RevokeRefreshToken(string tokenHash)
+        {
+            var refreshToken = await ExistRefreshToken(tokenHash);
+            if (refreshToken == null) return;
+            refreshToken.Revoked = DateTimeOffset.UtcNow;  
+            await _db.SaveChangesAsync();
         }
     }
 }

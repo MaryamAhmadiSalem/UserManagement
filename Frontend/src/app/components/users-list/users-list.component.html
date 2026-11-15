@@ -11,6 +11,9 @@
             <div class="actionIcon">
               <svg lucidePen class="editIcon" (click)="editUser(user.id)"></svg>
               <svg lucideTrash class="deleteIcon" (click)="deleteUsers(user.id)"></svg>
+              @if (isManager()) {
+                <svg lucideUserCog class="assignIcon" (click)="assignRole(user.id)"></svg>
+              }
             </div>
           } @else {
             {{ user[column] }}

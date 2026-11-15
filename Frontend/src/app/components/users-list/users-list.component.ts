@@ -1,14 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { UserService } from '../../services/user.service';
 import { MatTableModule } from '@angular/material/table';
-import { LucidePen, LucideTrash } from '@lucide/angular';
+import { LucidePen, LucideTrash, LucideUserCog } from '@lucide/angular';
 import { Router } from '@angular/router';
 import { Header } from '../header/header.component';
 import { AsyncPipe } from '@angular/common';
 import { Notification } from '../../services/notification';
 
 @Component({
-  imports: [MatTableModule, LucidePen, LucideTrash, Header, AsyncPipe],
+  imports: [MatTableModule, LucidePen, LucideTrash, LucideUserCog, Header, AsyncPipe],
   selector: 'app-users-list',
   styleUrl: './users-list.component.css',
   templateUrl: './users-list.component.html',
@@ -18,9 +18,11 @@ export class UsersList {
   private router = inject(Router);
   private notificationService = inject(Notification);
   userList = signal<IUser[]>([]);
+  isManager = signal<boolean>(false);
 
   displayedColumns = [
     'action',
+    'role',
     'email',
     'education',
     'job',
@@ -34,13 +36,14 @@ export class UsersList {
 
   ngOnInit() {
     this.readUsers();
+    this.roleAssignment();
   }
   public readUsers(): void {
     this.userService.getUsers().subscribe({
       next: (response) => this.userList.set(response),
       error: () =>
         this.notificationService.showNotification(
-          'Retrieving the list of users failed. Please try again.',
+          'To view your information, search using your National ID number.',
         ),
     });
   }
@@ -49,6 +52,9 @@ export class UsersList {
   }
   public deleteUsers(id: number): void {
     if (confirm('Are you sure you want to delete the user?')) this.handleDelete(id);
+  }
+  public assignRole(id: number): void {
+    this.router.navigate(['/mainlayout/assignmentrole', id]);
   }
   public searchUsers(nationalId: string) {
     if (nationalId.trim()) this.handleSearch(nationalId);
@@ -78,11 +84,10 @@ export class UsersList {
           this.notificationService.showNotification(
             'You cannot view information that does not belong to you.',
           );
-        else
-          this.notificationService.showNotification(
-            'Error connecting to the server, please try again.',
-          );
       },
     });
+  }
+  public roleAssignment() {
+    this.isManager.set(this.userService.isManager());
   }
 }

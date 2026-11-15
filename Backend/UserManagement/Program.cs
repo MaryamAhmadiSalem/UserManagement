@@ -1,18 +1,20 @@
-using UserManagement.Endpoints;
-using UserManagement.Configuration;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using UserManagement.Configuration.Extensions;
+using Microsoft.IdentityModel.Tokens;
 using UserManagement.Application.Extensions;
 using UserManagement.Application.Interfaces;
+using UserManagement.Configuration;
+using UserManagement.Configuration.Authorization;
+using UserManagement.Configuration.Extensions;
+using UserManagement.Endpoints;
 using UserManagement.Infrastructure;
 using UserManagement.Infrastructure.Repository;
 using UserManagement.Infrastructure.Services;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,12 +34,13 @@ builder.Services.AddDbContext<AppDbContext>((ServiceProvider, options) =>
 
 builder.Services.AddApplication();
 
-builder.Services.AddIdentityCore<IdentityUser>().AddEntityFrameworkStores<AppDbContext>();
+builder.Services.AddIdentityCore<IdentityUser>().AddRoles<IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITokenBlackListService, TokenBlackListService>();
+builder.Services.AddScoped<IdentitySeeder>();
 
 builder.Services.AddValidation();
 
@@ -70,6 +73,7 @@ builder.Services.AddAuthentication()
                       Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
                 ),
                 ValidateLifetime = true,
+                RoleClaimType = ClaimTypes.Role
             };
             option.Events = new JwtBearerEvents
             {
@@ -86,6 +90,27 @@ builder.Services.AddAuthentication()
             };
         }
     );
+builder.Services.AddAuthorization(option =>
+{
+    option.AddPolicy("UserRead", policy =>
+        policy.RequireClaim("permission", UserPermissions.ReadUsers)
+    );
+    option.AddPolicy("UserCreate", policy =>
+        policy.RequireClaim("permission", UserPermissions.CreateUsers)
+    );
+    option.AddPolicy("UserUpdate", policy =>
+        policy.RequireClaim("permission", UserPermissions.UpdateUsers)
+    );
+    option.AddPolicy("UserDelete", policy =>
+        policy.RequireClaim("permission", UserPermissions.DeleteUsers)
+    );
+    option.AddPolicy("RolesAssign", policy =>
+        policy.RequireClaim("permission", UserPermissions.AssignRoles)
+    );
+    option.AddPolicy("ReadAllUsers", policy =>
+        policy.RequireRole("Manager", "Admin")
+    );
+});
 
 var app = builder.Build();
 
@@ -98,6 +123,14 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AngularFrontend");
+
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+    await seeder.CreateRoles();
+    await seeder.CreateManager();
+    await seeder.CreateRoleClaim();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

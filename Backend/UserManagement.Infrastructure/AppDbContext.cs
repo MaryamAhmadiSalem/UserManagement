@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Identity;
 
 namespace UserManagement.Infrastructure
 {
-    public class AppDbContext : IdentityDbContext
+    public class AppDbContext : IdentityDbContext 
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
         public DbSet<UserInformation> Users { get; set; }
         public DbSet<TokenInfoExpired> TokenExpired { get; set; }
-
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

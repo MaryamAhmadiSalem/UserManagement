@@ -12,6 +12,7 @@ namespace UserManagement.Application.Mappings
             CreateMap<CreateUserDto, UserInformation>();
             CreateMap<RegisterDto, IdentityUser>()
                 .ForMember(u => u.UserName, opt => opt.MapFrom(u => u.Email));
+            CreateMap<UserInformation, UserListDto>();
         }
     }
 }

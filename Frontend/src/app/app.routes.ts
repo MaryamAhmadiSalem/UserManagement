@@ -37,6 +37,13 @@ export const routes: Routes = [
             (component) => component.UsersList,
           ),
       },
+      {
+        path: 'assignmentrole/:id',
+        loadComponent: () =>
+          import('./components/assignment-role/assignment-role.component').then(
+            (component) => component.AssignmentRole,
+          ),
+      },
     ],
   },
 ];

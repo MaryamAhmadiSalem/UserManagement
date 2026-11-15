@@ -46,10 +46,15 @@
   transition: transform 0.4s;
 }
 .deleteIcon {
+  margin-left: 8px;
+  transition: transform 0.4s;
+}
+.assignIcon {
   transition: transform 0.4s;
 }
 .editIcon:hover,
 .deleteIcon:hover,
+.assignIcon:hover,
 .showIcon:hover {
   cursor: pointer;
   transform: scale(1.3);
